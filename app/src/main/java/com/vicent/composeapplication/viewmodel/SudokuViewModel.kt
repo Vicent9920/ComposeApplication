@@ -1,6 +1,7 @@
 package com.vicent.composeapplication.viewmodel
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import com.vicent.composeapplication.MyApplication
@@ -57,6 +58,11 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
      * 游戏时间
      */
     private var currentTime:Long = 0
+
+    /**
+     * 当前关卡
+     */
+    private var currentLevel = 1
 
 
     /*********************************** UiEffect 页面交互 *********************************/
@@ -150,6 +156,35 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
                 }
                 _backEnable.tryEmit(operationList.isNotEmpty())
             }
+            is DoneDialogClick -> {
+                _showDone.tryEmit(false)
+                if(event.back){
+                    _title.tryEmit("主页")
+                    currentTime = 0
+                    mVisible = false
+                    setState { SudokuHome }
+                    _time.tryEmit("")
+                }else{
+                    setState { SudokuLoading }
+                    currentLevel++
+                    createTable(currentLevel)
+                }
+            }
+
+            is ErrorDialogClick -> {
+                _showError.tryEmit(false)
+                if(event.back){
+                    _title.tryEmit("主页")
+                    currentTime = 0
+                    mVisible = false
+                    setState { SudokuHome }
+                    _time.tryEmit("")
+                }else{
+                    setState { SudokuLoading }
+                    createTable(currentLevel)
+                    mVisible = true
+                }
+            }
         }
     }
 
@@ -171,14 +206,14 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
             if(errorCount >= 3){
                 // 关闭计时
                 _showError.tryEmit(true)
-                sendEvent(InLifeEvent(false))
+                mVisible = false
             }
         } else {
             item.state = NotEmptyTarget
             inputEnableCount--
             if(inputEnableCount == 0){
                 _showDone.tryEmit(true)
-                sendEvent(InLifeEvent(false))
+                mVisible = false
             }
         }
         // 弱关联
@@ -188,10 +223,10 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
             }else if (gridUnit.x == item.x || gridUnit.y == item.y || isTheSameBox(gridUnit, item)) {
                 if (isTheSameBox(gridUnit, item) && error && gridUnit.value == item.value) {
                     gridUnit.state = ErrorAssociation
-                } else {
+                } else if(gridUnit.state != ErrorTarget){
                     gridUnit.state = WeakAssociation
                 }
-            }else if (gridUnit.value == item.value) {
+            }else if (gridUnit.value == item.value && gridUnit.state != ErrorTarget) {
                 gridUnit.state = TheSameAssociation
             }
         }
@@ -246,11 +281,13 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
             _deleteEnable.tryEmit(DeleteEnable(false, position))
         } else {
             table.forEach {
-                if (it.value == item.value) {
+                if (it.value == item.value && it.state!=ErrorTarget) {
                     it.state = TheSameAssociation
                 }
             }
-            item.state = NotEmptyTarget
+            if(item.state != ErrorTarget){
+                item.state = NotEmptyTarget
+            }
             _inputEnable.tryEmit(InputEnable(false, position))
             if (item.onlyRead.not()) {
                 _deleteEnable.tryEmit(DeleteEnable(true, position))
@@ -271,6 +308,7 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
      * 渲染九宫格数据
      */
     fun createTable(level:Int) = viewModelScope.launch(Dispatchers.IO) {
+        currentLevel = level
         val table = initTable()
         getData().forEachIndexed { index: Int, c: Char ->
             table[index].code = c.digitToInt()
@@ -343,17 +381,20 @@ class SudokuViewModel : BaseViewModel<SudokuState, SudokuEvent, SudokuEffect>() 
     /**
      * 计算闯关时间
      */
-    fun runTimer() = viewModelScope.launch(Dispatchers.Main) {
-        currentTime = 0
-        _time.tryEmit(timeFormat.format(Date(currentTime)))
-        while (true) {
-            delay(1000)
-            if(mVisible){
-                currentTime+=1000
-                _time.tryEmit(timeFormat.format(Date(currentTime)))
-            }
+    fun runTimer() = viewModelScope.launch {
+        if(currentState.value is SudokuPlay){
+            currentTime = 0
+            _time.tryEmit(timeFormat.format(Date(currentTime)))
+            while (true) {
+                delay(1000)
+                if(mVisible){
+                    currentTime+=1000
+                    _time.tryEmit(timeFormat.format(Date(currentTime)))
+                }
 
+            }
         }
+
     }
 
     fun getTime(time:Long):String{

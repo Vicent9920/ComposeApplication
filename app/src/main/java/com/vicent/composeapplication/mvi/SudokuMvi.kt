@@ -30,6 +30,11 @@ class InputValue(val position: Int,val value:Int):SudokuEvent()
 object BackClickEvent:SudokuEvent()
 // 页面是否可见
 class InLifeEvent(val isVisible:Boolean):SudokuEvent()
+// 错误弹窗点击事件
+class ErrorDialogClick(val back:Boolean):SudokuEvent()
+// 过关弹窗点击事件
+class DoneDialogClick(val back:Boolean):SudokuEvent()
+
 
 
 

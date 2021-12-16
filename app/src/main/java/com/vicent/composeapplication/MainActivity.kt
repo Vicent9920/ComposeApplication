@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vicent.composeapplication.dao.SudokuLevel
 import com.vicent.composeapplication.model.*
 import com.vicent.composeapplication.mvi.*
@@ -128,10 +129,10 @@ fun SudokuPage(viewModel: SudokuViewModel) {
             }
         }
         Crossfade(viewModel.showDone.collectAsState().value) {
-            if (it) ShowDoneDialog()
+            if (it) ShowDoneDialog(viewModel)
         }
         Crossfade(viewModel.showError.collectAsState().value) {
-            if (it) ShowErrorDialog()
+            if (it) ShowErrorDialog(viewModel)
         }
 
 
@@ -416,7 +417,7 @@ fun GridBg() {
  * 提示用户完成游戏闯关
  */
 @Composable
-fun ShowDoneDialog() {
+fun ShowDoneDialog(viewModel: SudokuViewModel) {
     AlertDialog(onDismissRequest = {
         // 当用户点击对话框以外的地方或者按下系统返回键将会执行的代码
     },
@@ -436,7 +437,7 @@ fun ShowDoneDialog() {
         confirmButton = {
             TextButton(
                 onClick = {
-                    // TODO 继续闯关
+                    viewModel.sendEvent(DoneDialogClick(false))
                 },
             ) {
                 Text(
@@ -449,7 +450,7 @@ fun ShowDoneDialog() {
         dismissButton = {
             TextButton(
                 onClick = {
-                    // TODO 回到主页
+                    viewModel.sendEvent(DoneDialogClick(true))
                 }
             ) {
                 Text(
@@ -468,7 +469,7 @@ fun ShowDoneDialog() {
  * 提示用户重新闯关
  */
 @Composable
-fun ShowErrorDialog() {
+fun ShowErrorDialog(viewModel: SudokuViewModel) {
     AlertDialog(
         onDismissRequest = {
 
@@ -489,7 +490,7 @@ fun ShowErrorDialog() {
         confirmButton = {
             TextButton(
                 onClick = {
-                    // TODO 重新闯关
+                    viewModel.sendEvent(ErrorDialogClick(false))
                 },
             ) {
                 Text(
@@ -502,7 +503,7 @@ fun ShowErrorDialog() {
         dismissButton = {
             TextButton(
                 onClick = {
-                    // TODO 回到主页
+                    viewModel.sendEvent(ErrorDialogClick(true))
                 }
             ) {
                 Text(
